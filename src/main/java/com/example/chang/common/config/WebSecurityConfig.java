@@ -51,11 +51,11 @@ public class WebSecurityConfig {
             //  모든 패턴 허용
             cors.setAllowedOriginPatterns(List.of("*"));
             //  test
-            cors.setAllowedOrigins(List.of("https://fe-fawn.vercel.app"));
+            cors.setAllowedOrigins(List.of("http://localhost:3000"));
             //  API 메서드 허용 범위
             cors.setAllowedMethods(Arrays.asList("GET","POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
             //  test
-            cors.setAllowedOrigins(List.of("https://fe-fawn.vercel.app"));
+            cors.setAllowedOrigins(List.of("http://localhost:3000"));
             //  Headers 모든 값
             cors.setAllowedHeaders(List.of("*"));
             //  header token "Authorization"값 허용

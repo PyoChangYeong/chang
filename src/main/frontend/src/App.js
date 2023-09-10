@@ -7,7 +7,7 @@ function App() {
   const [hello, setHello] = useState('')
 
   useEffect(() => {
-    axios.get('/hello')
+    axios.get('http://localhost:8080/hello')
         .then(response => setHello(response.data))
         .catch(error => console.log(error))
   }, []);
