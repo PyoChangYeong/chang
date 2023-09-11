@@ -1,7 +1,7 @@
-import logo from './logo.svg';
 import './App.css';
 import axios from "axios";
 import {useEffect, useState} from "react";
+import SocialKakao from "./login/SocialKakao";
 
 function App() {
   const [hello, setHello] = useState('')
@@ -14,6 +14,12 @@ function App() {
 
   return (
     <div className="App">
+        <div className="kakaoLogin">
+            <SocialKakao/>
+        </div>
+        <div className="naverLogin">
+
+        </div>
       백엔드에서 가져온 데이터 =>  {hello}
     </div>
   );
