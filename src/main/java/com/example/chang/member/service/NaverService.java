@@ -35,26 +35,31 @@ import java.util.UUID;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-public class SocialUserService {
+public class NaverService {
 
     private final PasswordEncoder passwordEncoder;
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtUtil jwtUtil;
 
-    @Value("${spring.security.oauth2.client.registration.kakao.redirect-uri}")
-    private String redirect;
-    @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
-    private String client;
-    @Value("${spring.security.oauth2.client.registration.kakao.authorization-grant-type}")
-    private String authorizationType;
-    @Value("${spring.security.oauth2.client.registration.kakao.client-secret}")
-    private String secret;
 
-    public ApiResponseDto<SocialUserInfoDto> kakaoLogin(String code, HttpServletResponse response) throws JsonProcessingException {
+    @Value("${spring.security.oauth2.client.registration.naver.client-id}")
+    private String clientId;
+    @Value("${spring.security.oauth2.client.registration.naver.client-secret}")
+    private String secretKey;
+    @Value("${spring.security.oauth2.client.registration.naver.redirect-uri}")
+    private String redirectUri;
+    @Value("${spring.security.oauth2.client.registration.naver.authorization-grant-type}")
+    private String grantType;
+    @Value("${spring.security.oauth2.client.provider.naver.token-uri}")
+    private String tokenUri;
+    @Value("${spring.security.oauth2.client.provider.naver.user-info-uri}")
+    private String userInfoUri;
+
+    public ApiResponseDto<SocialUserInfoDto> naverLogin(String code, HttpServletResponse response) throws JsonProcessingException {
         String accessToken = getToken(code);
-        SocialUserInfoDto userInfoDto = getKakaoUserInfo(accessToken);
-        Member member = registerKakaoUserIfNeeded(userInfoDto);
+        SocialUserInfoDto userInfoDto = getNaverUserInfo(accessToken);
+        Member member = registerNaverUserIfNeeded(userInfoDto);
         TokenDto tokenDto = jwtUtil.createAllToken(member.getEmail(), String.valueOf(member.getId()));
         Optional<RefreshToken> refreshToken = refreshTokenRepository.findAllByMemberId(member.getEmail());
         if(refreshToken.isPresent()){
@@ -67,31 +72,28 @@ public class SocialUserService {
         return ResponseUtils.ok(SocialUserInfoDto.of(member.getEmail(),member.getUsername()));
     }
 
-
-//    카카오
-    private String getToken(String code) throws JsonProcessingException{
+    private String getToken(String code) throws JsonProcessingException {
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-type","application/x-www-form-urlencoded;charset=utf-8");
+        headers.add("Content-type", "application/x-www-form-urlencoded;charset=utf-8");
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("grant_type",authorizationType);
-        body.add("client_secret",secret);
-        body.add("client_id",client);
-        body.add("redirect_uri",redirect);
-        body.add("redirect_uri","http://localhost:8080/oauth/callback/kakao");
-        body.add("code",code);
+        body.add("grant_type", grantType);
+        body.add("client_id", clientId);
+        body.add("client_secret", secretKey);
+        body.add("redirect_uri", redirectUri);
+        body.add("code", code);
 
         HttpEntity<MultiValueMap<String, String>> kakaoTokenRequest = new HttpEntity<>(body, headers);
         RestTemplate rt = new RestTemplate();
         ResponseEntity<String> response = null;
         try {
             response = rt.exchange(
-                    "https://kauth.kakao.com/oauth/token",
+                    tokenUri,
                     HttpMethod.POST,
                     kakaoTokenRequest,
                     String.class
             );
         } catch (HttpClientErrorException e) {
-            log.error("Kakao API authentication failed with status code " + e.getRawStatusCode());
+            log.error("Naver API authentication failed with status code " + e.getRawStatusCode());
             log.error("Response headers: " + e.getResponseHeaders());
             log.error("Response body: " + e.getResponseBodyAsString());
             throw e;
@@ -102,7 +104,8 @@ public class SocialUserService {
 
         return jsonNode.get("access_token").asText();
     }
-    private SocialUserInfoDto getKakaoUserInfo(String accessToken) throws JsonProcessingException {
+
+    private SocialUserInfoDto getNaverUserInfo(String accessToken) throws JsonProcessingException {
         // HTTP Header 생성
         log.info("access토큰  : " + accessToken);
         HttpHeaders headers = new HttpHeaders();
@@ -115,7 +118,7 @@ public class SocialUserService {
         String responseBody = "";
         try {
             ResponseEntity<String> response = rt.exchange(
-                    "https://kapi.kakao.com/v2/user/me",
+                    userInfoUri,
                     HttpMethod.POST,
                     kakaoUserInfoRequest,
                     String.class
@@ -123,7 +126,7 @@ public class SocialUserService {
             responseBody = response.getBody();
         } catch (HttpClientErrorException ex) {
             log.error(ex.getMessage());
-            log.error("Kakao API authentication failed with status code " + ex.getRawStatusCode());
+            log.error("Naver API authentication failed with status code " + ex.getRawStatusCode());
             throw ex;
         }
 
@@ -131,26 +134,23 @@ public class SocialUserService {
         JsonNode jsonNode = objectMapper.readTree(responseBody);
 
         Long id = jsonNode.get("id").asLong();
-        String nickname = jsonNode.get("properties")
+        String nickname = jsonNode.get("name")
                 .get("nickname").asText();
-        String email = jsonNode.get("kakao_account")
+        String email = jsonNode.get("email")
                 .get("email").asText();
 
-        log.info("카카오 사용자 정보: " + id + ", " + nickname + ", " + email);
+        log.info("네이버 사용자 정보: " + id + ", " + nickname + ", " + email);
         return new SocialUserInfoDto(nickname, email);
     }
 
-
-    // 3. 필요시에 회원가입
-    private Member registerKakaoUserIfNeeded(SocialUserInfoDto userInfo) {
-        // 로그인 타입 && 사용자 EMAIL로 회원 유무 확인
-        Member findUser = (Member) memberRepository.findByEmail(userInfo.getEmail())
+    private Member registerNaverUserIfNeeded(SocialUserInfoDto userInfoDto){
+        Member findUser = (Member) memberRepository.findByEmail(userInfoDto.getEmail())
                 .orElse(null);
         if(findUser == null){
             findUser = memberRepository.save(Member.builder()
-                    .username(userInfo.getUsername())
+                    .username(userInfoDto.getUsername())
                     .pw(passwordEncoder.encode(UUID.randomUUID().toString()))
-                    .email(userInfo.getEmail())
+                    .email(userInfoDto.getEmail())
                     .build());
         }
         return findUser;
