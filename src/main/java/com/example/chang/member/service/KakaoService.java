@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
@@ -35,6 +36,7 @@ import java.util.UUID;
 @Slf4j
 @RequiredArgsConstructor
 @Component
+@Transactional
 public class KakaoService {
 
     private final PasswordEncoder passwordEncoder;
